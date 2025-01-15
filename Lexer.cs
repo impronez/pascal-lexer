@@ -102,9 +102,10 @@ public class Lexer(string filePath)
             _columnNumber += match.Value.Length;
             return match.Value;
         }
-        
+
+        int start = _columnNumber;
         _columnNumber = _line.Length;
-        return _line.Substring(_columnNumber, _line.Length - _columnNumber + 1);
+        return _line.Substring(start, _line.Length - start);
     }
 
     private bool IsStringLiteralStart(char ch)
