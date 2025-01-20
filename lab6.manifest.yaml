@@ -1,0 +1,3 @@
+dispatcher: dotnet8 
+projectDirectory: pascal-lexer
+target: pascal-lexer
