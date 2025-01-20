@@ -8,15 +8,18 @@ public class Token
 
     public readonly string Value;
 
+    public readonly int Length;
+
     public Token(TokenType tokenType, FilePosition filePosition, string value)
     {
         TokenType = tokenType;
         FilePosition = filePosition;
         Value = value;
+        Length = Value.Length;
     }
 
     public override string ToString()
     {
-        return $"{TokenType.ToString()} {FilePosition.ToString()} \"{Value}\"";
+        return $"{TokenTypeString.GetTokenString(TokenType)} {FilePosition.ToString()} \"{Value}\"";
     }
 }

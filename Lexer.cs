@@ -33,9 +33,20 @@ public class Lexer(string filePath)
 
         for (; _columnNumber < _line!.Length; _columnNumber++)
         {
+            if (!string.IsNullOrEmpty(value) && IsEndSeparator(_line[_columnNumber]))
+            {
+                break;
+            }
+            
             if (string.IsNullOrEmpty(value) && IsBlockCommentStart(_line[_columnNumber]))
             {
                 value = GetBlockComment();
+                break;
+            }
+
+            if (string.IsNullOrEmpty(value) && char.IsLetter(_line[_columnNumber]))
+            {
+                value = GetIdentifier(_line);
                 break;
             }
 
@@ -58,17 +69,18 @@ public class Lexer(string filePath)
                 break;
             }
             
-            if (IsOperatorByDoubleSymbols(value, _line[_columnNumber]))
+            if (!string.IsNullOrEmpty(value) && IsOperatorByDoubleSymbols(value, _line[_columnNumber]))
             {
                 value += _line[_columnNumber];
                 continue;
             }
 
-            if (Operator.IsToken(value) && !char.IsWhiteSpace(_line[_columnNumber]) && !Operator.IsToken(_line[_columnNumber].ToString()))
+            if (Operator.IsToken(value) && !char.IsWhiteSpace(_line[_columnNumber]) &&
+                !Operator.IsToken(_line[_columnNumber].ToString()))
             {
                 break;
             }
-            
+
             bool shouldBreak = 
                 !string.IsNullOrEmpty(value) && (
                     IsBlockCommentStart(_line[_columnNumber]) ||  // Начало блочного комментария
@@ -92,9 +104,36 @@ public class Lexer(string filePath)
         return value;
     }
 
+    private string GetIdentifier(string line)
+    {
+        string value = "";
+
+        for (; _columnNumber < line.Length; _columnNumber++)
+        {
+            if (char.IsLetter(line[_columnNumber]) 
+                || char.IsDigit(line[_columnNumber])
+                || line[_columnNumber] == '_')
+            {
+                value += line[_columnNumber];
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return value;
+    }
+
+    private bool IsEndSeparator(char ch)
+    {
+        return ch is ')' or ']' or ';';
+    }
+
     private string GetStringLiteral()
     {
-        var match = Regex.Match(_line, @"'[^']*'");
+        var line = _line.Substring(_columnNumber, _line.Length - _columnNumber);
+        var match = Regex.Match(line, @"'[^']*'");
         
         // Если найдена подходящая подстрока, вернуть её
         if (match.Success)
@@ -169,24 +208,40 @@ public class Lexer(string filePath)
     private string ParseNumber(string line)
     {
         string value = "";
-        
+        bool seenDot = false;
+        bool seenExponent = false;
+
         for (; _columnNumber < line.Length; _columnNumber++)
         {
-            if (!char.IsWhiteSpace(line[_columnNumber]))
+            char currentChar = line[_columnNumber];
+
+            if (char.IsDigit(currentChar))
             {
-                value += line[_columnNumber];
+                value += currentChar;
+            }
+            else if (currentChar == '.' && !seenDot && !seenExponent)
+            {
+                value += currentChar;
+                seenDot = true; 
+            }
+            else if ((currentChar == 'e' || currentChar == 'E') && !seenExponent)
+            {
+                value += currentChar;
+                seenExponent = true;
+            }
+            else if ((currentChar == '+' || currentChar == '-') && seenExponent && value[^1] is 'e' or 'E')
+            {
+                value += currentChar;
             }
             else
             {
                 break;
             }
         }
-        
-        var match = Regex.Match(value, @"^\d+(\.\d+)?");
-        if (match.Success)
+
+        if (Literal.IsIntegerLiteral(value) || Literal.IsFloatLiteral(value))
         {
-            _columnNumber += match.Value.Length - value.Length;
-            return match.Value;
+            return value;
         }
 
         return value;
@@ -239,7 +294,7 @@ public class Lexer(string filePath)
             return TokenType.Float;
         }
 
-        if (Literal.IsStringLiteral(tokenValue))
+        if (tokenValue[0] == '\'' && tokenValue[^1] == '\'')
         {
             return TokenType.String;
         }

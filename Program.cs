@@ -20,13 +20,21 @@ class Program
         while (true)
         {
             Token token = lexer.GetNextToken();
+            
             if (token.TokenType == TokenType.None)
             {
                 break;
+            }
+
+            if (token.TokenType is TokenType.BlockComment or TokenType.LineComment)
+            {
+                continue;
             }
             
             Console.WriteLine(token.ToString());
             writer.WriteLine(token.ToString());
         }
+        
+        writer.Close();
     }
 }
